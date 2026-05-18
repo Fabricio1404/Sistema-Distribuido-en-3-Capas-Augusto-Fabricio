@@ -1,139 +1,113 @@
-# Sistema Distribuido en 3 Capas con VirtualBox y Ubuntu Server
+# Sistema Distribuido de 3 Capas en VMs
 
-## Seminario de Actualización II – Laboratorio
-
-**Alumno:** Fabricio Augusto
-**Tema:** Implementación de arquitectura distribuida en 3 capas utilizando máquinas virtuales Linux.
-
----
-
-# Introducción
-
-El objetivo de este trabajo práctico fue implementar un sistema distribuido real separando los servicios en tres máquinas virtuales diferentes. Cada servidor cumple una función específica dentro de la arquitectura:
-
-* Base de datos
-* Backend/API REST
-* Frontend web
-
-La implementación se realizó utilizando VirtualBox y Ubuntu Server, configurando comunicación entre máquinas, acceso remoto mediante SSH y persistencia de datos utilizando MariaDB.
+**Materia:** Seminario De Actualización II 2026  
+**Alumno:** *Fabricio Augusto*  
+**Fecha:** Mayo 2026
 
 ---
 
-# Objetivo del Proyecto
+## Descripción del Proyecto
 
-Desarrollar un sistema funcional de registro de alumnos utilizando una arquitectura distribuida de 3 capas.
+Implementación de un sistema de registro de alumnos distribuido en 3 máquinas virtuales Linux (Ubuntu 22.04) corriendo en VirtualBox, cada una con una responsabilidad específica:
 
-El sistema debía permitir:
-
-* Registrar alumnos
-* Validar DNI duplicados
-* Consultar alumnos almacenados
-* Mantener los datos persistentes
-* Separar responsabilidades entre servidores
+| VMs | Rol | IP NAT | IP Interna | Puerto |
+|---|---|---|---|---|
+| VM1-BaseDatos | Base de datos MariaDB | 10.0.2.15 | 192.168.56.10 | 3306 |
+| VM2-Backend | API REST Node.js/Express | 10.0.2.16 | 192.168.56.11 | 3454 |
+| VM3-Frontend | Servidor Web Apache | 10.0.2.17 | 192.168.56.12 | 8080 |
 
 ---
 
-# Arquitectura del Sistema
+## Flujo de Datos
 
-| Máquina Virtual | Función               | IP        | Puerto |
-| --------------- | --------------------- | --------- | ------ |
-| VM1             | Base de Datos MariaDB | 10.0.2.15 | 3306   |
-| VM2             | Backend Node.js       | 10.0.2.16 | 3454   |
-| VM3             | Frontend Apache       | 10.0.2.17 | 8080   |
-
----
-
-# Flujo del Sistema
-
-```text
-Navegador
-   ↓
-Frontend Apache (VM3)
-   ↓
-API REST Node.js (VM2)
-   ↓
-MariaDB (VM1)
+```
+Navegador (Host)
+      │
+      │ localhost:8080
+      ▼
+VM3 - Apache (10.0.2.17)
+      │
+      │ 192.168.56.11:3454
+      ▼
+VM2 - Node.js/Express API (10.0.2.16)
+      │
+      │ 192.168.56.10:3306
+      ▼
+VM1 - MariaDB (10.0.2.15)
 ```
 
 ---
 
-# Tecnologías Utilizadas
+## Infraestructura y Red
 
-| Tecnología          | Uso                   |
-| ------------------- | --------------------- |
-| Oracle VirtualBox   | Virtualización        |
-| Ubuntu Server 24.04 | Sistema Operativo     |
-| MariaDB             | Base de datos         |
-| Node.js + Express   | Backend               |
-| Apache2             | Frontend              |
-| HTML + JavaScript   | Interfaz web          |
-| SSH                 | Administración remota |
-| Netplan             | Configuración de red  |
+### Configuración de Red en VirtualBox
 
----
+Cada VM tiene 2 adaptadores de red:
 
-# Creación de las Máquinas Virtuales
+- **Adaptador 1 (NAT):** Para acceso SSH desde el host y salida a internet
+- **Adaptador 2 (Red Interna - intnet):** Para comunicación entre VMs
 
-Se creó inicialmente una VM base con Ubuntu Server.
+### Reglas de Port Forwarding (NAT)
 
-## Recursos asignados
+**VM1 - Base de Datos:**
 
-* 2 GB RAM
-* 2 CPUs
-* 20 GB Disco dinámico
+| Nombre | Puerto Host | Puerto Invitado |
+|---|---|---|
+| SSH_DB | 2215 | 22 |
+| MySQL_DB | 3306 | 3306 |
 
-Durante la instalación:
+**VM2 - Backend:**
 
-* Se instaló OpenSSH Server
-* Se utilizó Ubuntu Server completo
-* Se configuró usuario administrador
+| Nombre | Puerto Host | Puerto Invitado |
+|---|---|---|
+| SSH_BACK | 2216 | 22 |
+| API_SERVICE | 3454 | 3454 |
 
-Luego la VM fue clonada para generar:
+**VM3 - Frontend:**
 
-* VM1-DB
-* VM2-BACKEND
-* VM3-FRONTEND
-
-Al clonar las máquinas se habilitó la opción:
-
-```text
-Generar nuevas direcciones MAC
-```
-
-para evitar conflictos de red.
+| Nombre | Puerto Host | Puerto Invitado |
+|---|---|---|
+| SSH_FRONT | 2217 | 22 |
+| WEB_SISTEMA | 8080 | 8080 |
 
 ---
 
-# Configuración de Red
+## Paso a Paso de Implementación
 
-Cada máquina virtual fue configurada con red NAT.
+### FASE 1 — Creación de las VMs
 
-## Direcciones IP utilizadas
-
-| VM  | IP        |
-| --- | --------- |
-| VM1 | 10.0.2.15 |
-| VM2 | 10.0.2.16 |
-| VM3 | 10.0.2.17 |
+1. Descargar Ubuntu Server 22.04 LTS desde https://releases.ubuntu.com
+2. En VirtualBox crear nueva VM con estas especificaciones:
+   - RAM: 2048 MB
+   - Disco: 10 GB (VDI, reservado dinámicamente)
+   - Tipo: Linux 64-bit
+3. En Almacenamiento montar el ISO descargado
+4. Instalar Ubuntu Server con las siguientes opciones:
+   - Idioma: English
+   - Teclado: English (US)
+   - Tipo: Ubuntu Server (no minimized)
+   - Tildar **Install OpenSSH server**
+5. Una vez instalada la VM1, clonarla para crear VM2 y VM3:
+   - Clic derecho → Clonar
+   - Política MAC: Generar nuevas direcciones MAC
+   - Tipo: Clonado completo
 
 ---
 
-# Configuración de Netplan
+### FASE 2 — Configuración de Red
 
-Archivo editado:
+En cada VM editar el archivo de red:
 
 ```bash
-sudo nano /etc/netplan/50-cloud-init.yaml
+sudo nano /etc/netplan/00-installer-config.yaml
 ```
 
-Ejemplo de configuración:
-
+**VM1:**
 ```yaml
 network:
   version: 2
   ethernets:
     enp0s3:
-      dhcp4: false
       addresses:
         - 10.0.2.15/24
       routes:
@@ -142,109 +116,96 @@ network:
       nameservers:
         addresses:
           - 8.8.8.8
+    enp0s8:
+      addresses:
+        - 192.168.56.10/24
 ```
 
-Aplicar cambios:
+**VM2 (cambiar IPs):**
+```yaml
+    enp0s3:
+      addresses:
+        - 10.0.2.16/24
+    enp0s8:
+      addresses:
+        - 192.168.56.11/24
+```
+
+**VM3 (cambiar IPs):**
+```yaml
+    enp0s3:
+      addresses:
+        - 10.0.2.17/24
+    enp0s8:
+      addresses:
+        - 192.168.56.12/24
+```
+
+Aplicar cambios en cada VM:
 
 ```bash
-sudo chmod 600 /etc/netplan/50-cloud-init.yaml
+sudo chmod 600 /etc/netplan/00-installer-config.yaml
 sudo netplan apply
 ```
 
----
+Verificar conectividad entre VMs (desde VM2):
 
-# Configuración de SSH y Port Forwarding
+```bash
+ping -c 3 192.168.56.10
+```
 
-## Reglas utilizadas
-
-| Servicio        | Puerto Host | Puerto VM |
-| --------------- | ----------- | --------- |
-| SSH VM1         | 2221        | 22        |
-| SSH VM2         | 2222        | 22        |
-| SSH VM3         | 2223        | 22        |
-| Backend API     | 3454        | 3454      |
-| Frontend Apache | 8080        | 8080      |
+Resultado esperado: `0% packet loss`
 
 ---
 
-# Acceso remoto por SSH
+### FASE 3 — VM1: Servidor de Base de Datos
 
-## VM1
-
-```bash
-ssh usuario@localhost -p 2221
-```
-
-## VM2
-
-```bash
-ssh usuario@localhost -p 2222
-```
-
-## VM3
-
-```bash
-ssh usuario@localhost -p 2223
-```
-
----
-
-# VM1 – Configuración de MariaDB
-
-## Instalación
+#### Instalación de MariaDB
 
 ```bash
 sudo apt update
 sudo apt install mariadb-server -y
+sudo systemctl status mariadb
 ```
 
-## Creación de Base de Datos
+#### Creación de la base de datos y tabla
+
+```bash
+sudo mariadb
+```
 
 ```sql
-CREATE DATABASE escuela;
-USE escuela;
+CREATE DATABASE gestion_alumnos;
+USE gestion_alumnos;
 
 CREATE TABLE alumnos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    apellidos VARCHAR(100),
-    nombres VARCHAR(100),
-    dni VARCHAR(20) UNIQUE
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  apellidos VARCHAR(100) NOT NULL,
+  nombres VARCHAR(100) NOT NULL,
+  dni VARCHAR(20) UNIQUE
 );
 ```
 
----
-
-# Usuario Remoto
+#### Creación del usuario remoto
 
 ```sql
-CREATE USER 'usuario_consulta'@'%' IDENTIFIED BY '1234';
-GRANT ALL PRIVILEGES ON escuela.* TO 'usuario_consulta'@'%';
+CREATE USER 'fabricio'@'192.168.56.11' IDENTIFIED BY 'tu_password';
+GRANT ALL PRIVILEGES ON gestion_alumnos.* TO 'fabricio'@'192.168.56.11';
 FLUSH PRIVILEGES;
+EXIT;
 ```
 
----
-
-# Habilitar Conexiones Externas
-
-Editar:
+#### Habilitar acceso remoto
 
 ```bash
 sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
 ```
 
-Cambiar:
+Buscar `bind-address = 127.0.0.1` y cambiar por:
 
-```text
-bind-address = 127.0.0.1
 ```
-
-por:
-
-```text
 bind-address = 0.0.0.0
 ```
-
-Reiniciar servicio:
 
 ```bash
 sudo systemctl restart mariadb
@@ -252,271 +213,264 @@ sudo systemctl restart mariadb
 
 ---
 
-# VM2 – Backend con Node.js
+### FASE 4 — VM2: Servidor Backend (Node.js/Express)
 
-## Instalación
+#### Instalación de Node.js
 
 ```bash
 sudo apt update
 sudo apt install nodejs npm -y
+node -v
+npm -v
 ```
 
-## Dependencias
+#### Crear el proyecto
 
 ```bash
+mkdir ~/app-alumnos
+cd ~/app-alumnos
 npm init -y
-npm install express mysql2 cors
 ```
 
----
+#### Instalar dependencias
 
-# Código del Backend
-
-Archivo:
-
-```text
-server.js
+```bash
+npm install express cors mysql2
 ```
 
-## Funcionalidades implementadas
+#### Verificar instalación
 
-### POST /grabaAlumnos
+```bash
+node -e "require('express'); require('mysql2'); console.log('todo ok')"
+```
 
-* Recibe datos del alumno
-* Verifica si el DNI ya existe
-* Inserta el alumno si no está repetido
-* Devuelve:
+#### Código de la API (`~/app-alumnos/app.js`)
 
-  * 1 = éxito
-  * 0 = error
+```js
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2');
 
-### GET /consultarAlumnos
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-* Devuelve todos los alumnos
-* Ordenados por apellido y nombre
+function getConnection() {
+    return mysql.createConnection({
+        host: '192.168.56.10',
+        user: 'fabricio',
+        password: 'tu_password',
+        database: 'gestion_alumnos'
+    });
+}
 
----
+app.post('/grabaAlumnos', (req, res) => {
+    const { apellidos, nombres, dni } = req.body;
+    const conn = getConnection();
 
-# Conexión a Base de Datos
+    conn.query(
+        'SELECT COUNT(*) AS count FROM alumnos WHERE dni = ?',
+        [dni],
+        (err, results) => {
+            if (err) {
+                conn.end();
+                return res.json({ resultado: 0, mensaje: err.message });
+            }
 
-```javascript
-const db = mysql.createConnection({
-    host: '10.0.2.15',
-    user: 'usuario_consulta',
-    password: '1234',
-    database: 'escuela'
+            if (results[0].count > 0) {
+                conn.end();
+                return res.json({ resultado: 0, mensaje: 'DNI ya existe' });
+            }
+
+            conn.query(
+                'INSERT INTO alumnos (apellidos, nombres, dni) VALUES (?, ?, ?)',
+                [apellidos, nombres, dni],
+                (err2) => {
+                    conn.end();
+                    if (err2) {
+                        return res.json({ resultado: 0, mensaje: err2.message });
+                    }
+                    return res.json({ resultado: 1, mensaje: 'Alumno grabado correctamente' });
+                }
+            );
+        }
+    );
+});
+
+app.get('/consultarAlumnos', (req, res) => {
+    const conn = getConnection();
+
+    conn.query(
+        'SELECT * FROM alumnos ORDER BY apellidos ASC, nombres ASC',
+        (err, results) => {
+            conn.end();
+            if (err) {
+                return res.json({ error: err.message });
+            }
+            return res.json(results);
+        }
+    );
+});
+
+app.listen(3454, '0.0.0.0', () => {
+    console.log('API corriendo en puerto 3454');
 });
 ```
 
----
-
-# Ejecución del Backend
+#### Configurar la API como servicio del sistema
 
 ```bash
-node server.js
+sudo nano /etc/systemd/system/api-alumnos.service
 ```
 
-Verificación:
+```ini
+[Unit]
+Description=API Alumnos Node.js
+After=network.target
+
+[Service]
+User=fabricio1404
+WorkingDirectory=/home/fabricio1404/app-alumnos
+ExecStart=/usr/bin/node /home/fabricio1404/app-alumnos/app.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ```bash
-curl http://localhost:3454/consultarAlumnos
+sudo systemctl daemon-reload
+sudo systemctl enable api-alumnos
+sudo systemctl start api-alumnos
+sudo systemctl status api-alumnos
 ```
 
 ---
 
-# VM3 – Frontend con Apache
+### FASE 5 — VM3: Servidor Frontend (Apache)
 
-## Instalación
+#### Instalación de Apache
 
 ```bash
 sudo apt update
 sudo apt install apache2 -y
 ```
 
----
-
-# Cambio de Puerto
-
-Editar:
+#### Cambiar el puerto a 8080
 
 ```bash
 sudo nano /etc/apache2/ports.conf
 ```
 
-Cambiar:
-
-```text
-Listen 80
-```
-
-por:
-
-```text
-Listen 8080
-```
-
-Editar:
+Cambiar `Listen 80` por `Listen 8080`
 
 ```bash
 sudo nano /etc/apache2/sites-enabled/000-default.conf
 ```
 
-Cambiar:
-
-```text
-<VirtualHost *:80>
-```
-
-por:
-
-```text
-<VirtualHost *:8080>
-```
-
-Reiniciar Apache:
+Cambiar `<VirtualHost *:80>` por `<VirtualHost *:8080>`
 
 ```bash
 sudo systemctl restart apache2
 ```
 
----
-
-# Estructura del Frontend
-
-```text
-/var/www/html/Sistema
-│
-├── index.html
-└── app.js
-```
-
----
-
-# Funcionalidades del Frontend
-
-La interfaz web permite:
-
-* Registrar alumnos
-* Consultar alumnos cargados
-* Mostrar mensajes de éxito/error
-* Consumir la API mediante Fetch API
-
----
-
-# Comunicación entre Capas
-
-## Frontend → Backend
-
-```javascript
-fetch('http://localhost:3454/grabaAlumnos')
-```
-
-## Backend → Base de Datos
-
-```text
-10.0.2.15:3306
-```
-
----
-
-# Pruebas Realizadas
-
-## Verificación de red
+#### Crear la carpeta y el archivo del sistema
 
 ```bash
-ping 10.0.2.15
+sudo mkdir /var/www/html/Sistema
+sudo nano /var/www/html/Sistema/index.html
 ```
 
-## Verificación de API
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Alumnos</title>
+</head>
+<body>
+    <h1>Registro de Alumnos</h1>
 
-```bash
-curl http://localhost:3454/consultarAlumnos
-```
+    <h2>Agregar Alumno</h2>
+    <input type="text" id="apellidos" placeholder="Apellidos">
+    <input type="text" id="nombres" placeholder="Nombres">
+    <input type="text" id="dni" placeholder="DNI">
+    <button onclick="grabarAlumno()">Guardar</button>
+    <p id="mensaje"></p>
 
-## Verificación del Frontend
+    <h2>Lista de Alumnos</h2>
+    <button onclick="consultarAlumnos()">Actualizar Lista</button>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th><th>Apellidos</th><th>Nombres</th><th>DNI</th>
+            </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+    </table>
 
-```text
-http://localhost:8080/Sistema
+    <script>
+        const API = 'http://localhost:3454';
+
+        async function grabarAlumno() {
+            const apellidos = document.getElementById('apellidos').value;
+            const nombres = document.getElementById('nombres').value;
+            const dni = document.getElementById('dni').value;
+
+            const res = await fetch(`${API}/grabaAlumnos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apellidos, nombres, dni })
+            });
+
+            const data = await res.json();
+            document.getElementById('mensaje').textContent = data.mensaje;
+            if (data.resultado === 1) consultarAlumnos();
+        }
+
+        async function consultarAlumnos() {
+            const res = await fetch(`${API}/consultarAlumnos`);
+            const alumnos = await res.json();
+            const tbody = document.getElementById('tabla');
+            tbody.innerHTML = '';
+            alumnos.forEach(a => {
+                tbody.innerHTML += `<tr>
+                    <td>${a.id}</td>
+                    <td>${a.apellidos}</td>
+                    <td>${a.nombres}</td>
+                    <td>${a.dni}</td>
+                </tr>`;
+            });
+        }
+
+        consultarAlumnos();
+    </script>
+</body>
+</html>
 ```
 
 ---
 
-# Problemas Encontrados
+## Diferencias respecto a la versión Python/Flask
 
-## Error con Netplan
-
-El archivo YAML tenía errores de indentación y Netplan no aplicaba la configuración.
-
-### Solución
-
-Revisar cuidadosamente espacios y tabulaciones.
-
----
-
-## Error de conexión a MariaDB
-
-El backend no podía conectarse a la base de datos.
-
-### Solución
-
-Modificar:
-
-```text
-bind-address = 0.0.0.0
-```
+| Aspecto | Python/Flask | Node.js/Express |
+|---|---|---|
+| Runtime | python3 | node |
+| Framework | Flask | Express |
+| Driver MySQL | mysql-connector-python | mysql2 |
+| Instalación paquetes | pip3 install | npm install |
+| Archivo principal | app.py | app.js |
+| Directorio del proyecto | /home/fabricio/ | /home/fabricio1404/app-alumnos/ |
 
 ---
 
-## Error por IP duplicada
+## Evidencia — Sistema Funcionando
 
-Las VMs clonadas tenían la misma IP.
+> <img width="820" height="510" alt="image" src="https://github.com/user-attachments/assets/691d20c1-cb9b-47ee-87f8-873ed1a84c1e" />
 
-### Solución
 
-Modificar manualmente las IPs en Netplan.
+<!-- Reemplazá esta línea con tu captura: ![Sistema funcionando](./captura.png) -->
 
----
+![Sistema funcionando](./captura.png)
 
-## Problemas con permisos de Netplan
-
-Aparecía el warning:
-
-```text
-Permissions too open
-```
-
-### Solución
-
-```bash
-sudo chmod 600 /etc/netplan/50-cloud-init.yaml
-```
-
----
-
-# Resultado Final
-
-El sistema quedó funcionando correctamente:
-
-* Frontend operativo en Apache
-* Backend respondiendo peticiones
-* Base de datos persistiendo información
-* Comunicación exitosa entre las 3 capas
-* Acceso remoto por SSH funcionando
-
----
-
-# Conclusión
-
-Este trabajo permitió comprender el funcionamiento de una arquitectura distribuida real utilizando virtualización.
-
-Además, se trabajó con:
-
-* Configuración de redes
-* Administración de servidores Linux
-* Servicios web
-* Bases de datos
-* APIs REST
-* Comunicación entre capas
-* Acceso remoto mediante SSH
-
-La práctica ayudó a entender cómo se conectan y comunican distintos servicios dentro de una infraestructura distribuida.
+**Acceso:** `http://localhost:8080/Sistema`
