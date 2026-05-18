@@ -471,6 +471,5 @@ sudo nano /var/www/html/Sistema/index.html
 
 <!-- Reemplazá esta línea con tu captura: ![Sistema funcionando](./captura.png) -->
 
-(./captura.png)
 
 **Acceso:** `http://localhost:8080/Sistema`
