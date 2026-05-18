@@ -2,7 +2,7 @@
 
 **Materia:** Seminario De Actualización II 2026  
 **Alumno:** *Fabricio Augusto*  
-**Fecha:** Mayo 2026
+**Fecha:** 18/05/2026
 
 ---
 
