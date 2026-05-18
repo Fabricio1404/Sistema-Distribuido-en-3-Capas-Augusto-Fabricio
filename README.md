@@ -2,8 +2,7 @@
 
 ## Seminario de Actualización II – Laboratorio
 
-**Alumno:** Fabry Augusto
-**Fecha:** Mayo 2026
+**Alumno:** Fabricio Augusto
 **Tema:** Implementación de arquitectura distribuida en 3 capas utilizando máquinas virtuales Linux.
 
 ---
