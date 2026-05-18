@@ -460,7 +460,7 @@ sudo nano /var/www/html/Sistema/index.html
 | Driver MySQL | mysql-connector-python | mysql2 |
 | Instalación paquetes | pip3 install | npm install |
 | Archivo principal | app.py | app.js |
-| Directorio del proyecto | /home/fabricio/ | /home/fabricio1404/app-alumnos/ |
+| Directorio del proyecto | /home/fabricio1404/ | /home/fabricio1404/app-alumnos/ |
 
 ---
 
@@ -471,6 +471,6 @@ sudo nano /var/www/html/Sistema/index.html
 
 <!-- Reemplazá esta línea con tu captura: ![Sistema funcionando](./captura.png) -->
 
-![Sistema funcionando](./captura.png)
+(./captura.png)
 
 **Acceso:** `http://localhost:8080/Sistema`
